@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+npm-debug.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Prisma generated folder (ako budeš koristio Prisma u budućnosti)
+.prisma/
+prisma/dev.db
+
+# Optional: VSCode settings
+.vscode/
+
+# Build artifacts
+dist/
+build/
