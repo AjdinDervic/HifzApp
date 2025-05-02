@@ -7,17 +7,13 @@ node_modules/
 # Logs
 npm-debug.log*
 
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Prisma generated folder (ako budeš koristio Prisma u budućnosti)
+# Prisma artifacts (ako koristiš kasnije)
 .prisma/
 prisma/dev.db
 
-# Optional: VSCode settings
+# VSCode settings (opcionalno)
 .vscode/
 
-# Build artifacts
+# Build folders (ako dodaš frontend)
 dist/
 build/
