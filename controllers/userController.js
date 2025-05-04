@@ -1,99 +1,78 @@
-let users = [
-  {
-    id: 1,
-    name: "Ajdin",
-    surname: "Dervic",
-    mail: "ajdindervic@mail.com",
-    city: "Sarajevo",
-    password: "test123",
-  },
-  {
-    id: 2,
-    name: "Dzenana",
-    surname: "Dervic",
-    mail: "dzenanadervic@mail.com",
-    city: "Sarajevo",
-    password: "test456",
-  },
-];
+const prisma = require('../db/prisma');
 
 // Prikaz svih korisnika
-const getAllUsers = (req, res) => {
-  res.json(users);
+const getAllUsers = async (req, res) => {
+ try{
+    const users = await prisma.user.findMany();
+    res.json(users);
+ }catch(error){
+console.error(error);
+res.status(500).json({error: "Desilo se nesto neocekivano"});
+ }
 };
 
 // Prikaz jednog korisnika po ID-u
-const getUserById = (req, res) => {
+const getUserById = async (req, res) => {
   const id = parseInt(req.params.id);
-  const user = users.find((u) => u.id === id);
+  try{
+  const user = await prisma.user.findUnique({where: {id}});
 
   if (!user) {
     return res.status(404).json({ message: "Korisnik nije pronađen." });
   }
-
   res.json(user);
+}catch(error){
+console.log(error);
+res.status(500).json({error: "Greska prilikom pronalska korisnika"});
+}
 };
 
 // Registracija korisnika
-const createUser = (req, res) => {
-  const { name, surname, mail, city, password } = req.body;
+const createUser = async (req, res) => {
+  const { name, surname, email, city, password, userType } = req.body;
 
-  if (!name || !surname || !mail || !city || !password) {
+  if (!name || !surname || !email || !city || !password || !userType) {
     return res.status(400).json({ message: "Sva polja su obavezna." });
   }
 
-  const newUser = {
-    id: Date.now(),
-    name,
-    surname,
-    mail,
-    city,
-    password,
-  };
+  try{
+    const user = await prisma.user.create({
+        data: {name, surname, email, password, city, role: "USER", userType }
+    });
+    res.status(201).json({message: "Registracija uspješna.", user});
+  }catch(error){
+    res.status(500).json({error: "Greška prilikom kreiranja korisnika."});
+  }
 
-  users.push(newUser);
-
-  res.status(201).json({
-    message: "Registracija je uspješna.",
-    user: newUser,
-  });
 };
 
 // Ažuriranje korisnika
-const updateUser = (req, res) => {
+const updateUser = async (req, res) => {
   const id = parseInt(req.params.id);
-  const user = users.find((u) => u.id === id);
-
-  if (!user) {
-    return res.status(404).json({ message: "Korisnik nije pronađen." });
+const { name, surname, email, password, city, userType } = req.body;
+  try{
+    const updated = await prisma.user.update({
+      where: {id},
+      data: {name, surname, email, password, city, userType}
+    });
+    res.json({message: "Podaci su ažuririrani.", user: updated});
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška prilikom ažuriranja podataka"});
   }
-
-  const { name, surname, mail, city, password } = req.body;
-
-  if (name) user.name = name;
-  if (surname) user.surname = surname;
-  if (mail) user.mail = mail;
-  if (city) user.city = city;
-  if (password) user.password = password;
-
-  res.json({ message: "Korisnik je ažuriran.", user });
 };
 
 // Brisanje korisnika
-const deleteUser = (req, res) => {
+const deleteUser = async (req, res) => {
   const id = parseInt(req.params.id);
-  const index = users.findIndex((u) => u.id === id);
 
-  if (index === -1) {
-    return res.status(404).json({ message: "Korisnik nije pronađen." });
+  try{
+  const deleted = await prisma.user.delete({where: {id}});
+  res.json({ message: "Korisnik je izbrisan.", user: deleted });
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška prilikom brisanja korisnika."});
   }
-
-  const deleted = users.splice(index, 1);
-
-  res.json({
-    message: "Korisnik je uspješno obrisan.",
-    deleted: deleted[0],
-  });
 };
 
 module.exports = {

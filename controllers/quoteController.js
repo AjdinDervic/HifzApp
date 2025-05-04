@@ -1,49 +1,63 @@
-let quotesList = []; // Memorijsko čuvanje citata
+const prisma = require("../db/prisma");
 
 // Dohvati citat za danas
-const getDailyQuote = (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
+const getDailyQuote = async (req, res) => {
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
 
-  // Prvo pokušaj pronaći citat koji je zakazan za danas
-  const scheduledQuote = quotesList.find((q) => q.scheduledDate === today);
+  const todayEnd = new Date();
+  todayEnd.setUTCHours(23, 59, 59, 999);
 
-  if (scheduledQuote) {
-    return res.status(200).json({ quote: scheduledQuote });
+  try {
+    // 👇 Zakazan za danas
+    const scheduledQuote = await prisma.quote.findFirst({
+      where: {
+        scheduledDate: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+      },
+    });
+
+    if (scheduledQuote) {
+      return res.status(200).json({ quote: scheduledQuote });
+    }
+
+    // 👇 Random citat
+    const allQuotes = await prisma.quote.findMany();
+    if (allQuotes.length === 0) {
+      return res.status(404).json({ message: "Nema dostupnih citata." });
+    }
+
+    const randomIndex = Math.floor(Math.random() * allQuotes.length);
+    const randomQuote = allQuotes[randomIndex];
+
+    res.status(200).json({ quote: randomQuote });
+  } catch (error) {
+    res.status(500).json({ message: "Greška na serveru." });
   }
-
-  // Ako nema zakazanih, izvuci random citat
-  if (quotesList.length === 0) {
-    return res.status(404).json({ message: "Nema dostupnih citata." });
-  }
-
-  const randomIndex = Math.floor(Math.random() * quotesList.length);
-  const randomQuote = quotesList[randomIndex];
-
-  res.status(200).json({ quote: randomQuote });
 };
 
-// Dodaj novi citat
-const createQuote = (req, res) => {
-  const { text, source } = req.body;
-
+// KONEKTOVANO S BAZOM - Dodaj novi citat
+const createQuote = async (req, res) => {
+  const { text, author, source, scheduledDate } = req.body;
   if (!text) {
     return res.status(400).json({ message: "Tekst citata je obavezan." });
   }
 
-  const newQuote = {
-    id: Date.now(), // Privremeni ID
-    text,
-    source: source || "Nepoznat",
-    createdAt: new Date().toISOString(),
-  };
-
-  quotesList.push(newQuote);
-
-  res.status(201).json({ message: "Citat uspješno kreiran.", quote: newQuote });
+  try{
+    const newQuote = await prisma.quote.create({
+      data: {text, author, source, scheduledDate}
+    });
+    res.status(201).json({message: "Citat uspjesno kreiran."});
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška na serveru."});
+  }
 };
 
 // Zakaži citat za određeni datum
-const scheduleQuote = (req, res) => {
+const scheduleQuote = async (req, res) => {
   const { id } = req.params;
   const { scheduledDate } = req.body;
 
@@ -51,50 +65,61 @@ const scheduleQuote = (req, res) => {
     return res.status(400).json({ message: "Datum je obavezan." });
   }
 
-  const quote = quotesList.find((q) => q.id == id);
+  try {
+    const updated = await prisma.quote.update({
+      where: { id: parseInt(id) },
+      data: { scheduledDate: new Date(scheduledDate) },
+    });
 
-  if (!quote) {
-    return res.status(404).json({ message: "Citat nije pronađen." });
+    res
+      .status(200)
+      .json({ message: "Citat uspješno zakazan.", quote: updated });
+  } catch (error) {
+    res.status(404).json({ message: "Citat nije pronađen." });
   }
 
-  quote.scheduledDate = scheduledDate;
 
-  res.status(200).json({ message: "Citat uspješno zakazan.", quote });
 };
 
 //OTKAZIVANJE citata
-const unscheduleQuote = (req, res) => {
+const unscheduleQuote = async (req, res) => {
   const { id } = req.params;
 
-  const quote = quotesList.find((q) => q.id == id);
+try {
+  const updated = await prisma.quote.update({
+    where: { id: parseInt(id) },
+    data: { scheduledDate: null }
+  });
 
-  if (!quote) {
-    return res.status(404).json({ message: "Citat nije pronađen." });
-  }
-
-  quote.scheduledDate = null;
-
-  res.status(200).json({ message: "Schedule uspješno uklonjen.", quote });
+  res.status(200).json({ message: "Schedule uspješno uklonjen.", quote: updated });
+} catch (error) {
+  res.status(404).json({ message: "Citat nije pronađen." });
+}
 };
 
-// Dohvati sve citate
-const getAllQuotes = (req, res) => {
-  res.status(200).json({ quotes: quotesList });
+// KONEKTOVANO S BAZOM -Dohvati sve citate 
+const getAllQuotes = async (req, res) => {
+  try{
+  const quotes = await prisma.quote.findMany();
+  res.json(quotes);
+  }catch(error){
+    res.status(500).json({error: "Greka na serveru."});
+  }
+  
+
 };
 
-//BRISANJE izreke
-const deleteQuote = (req, res) => {
-  const { id } = req.params;
+//KONEKTOVANO S BAZOM - BRISANJE izreke
+const deleteQuote = async (req, res) => {
+  const id  = parseInt(req.params.id);
 
-  const quoteIndex = quotesList.findIndex((q) => q.id == id);
-
-  if (quoteIndex === -1) {
-    return res.status(404).json({ message: "Citat nije pronađen." });
+  try{
+    await prisma.quote.delete({where: {id}});
+    res.json({message: "Citat uspješno izbrisan."});
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška na serveru."});
   }
-
-  quotesList.splice(quoteIndex, 1);
-
-  res.status(200).json({ message: "Citat uspješno obrisan." });
 };
 
 

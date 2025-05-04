@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum UserType {
+  UCENIK
+  HAFIZ
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  surname   String
+  email     String   @unique
+  password  String
+  city      String
+  role      Role     @default(USER)
+  userType  UserType
+  createdAt DateTime @default(now())
+  progress  Progress?
+}
+
+model Article{
+  id  Int @id @default(autoincrement())
+  title String
+  author String
+  content String
+  imageURL  String
+  createdAt DateTime  @default(now())
+}
+
+model Progress {
+  id               Int      @id @default(autoincrement())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           Int      @unique
+  method           String
+  learnedPages     Int[]    
+  totalLearned     Int
+  newLearnedCount  Int
+  level            Int
+  badges           String[]
+  learningMode     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Quote {
+  id        Int      @id @default(autoincrement())
+  text      String
+  author    String?
+  source        String?
+  scheduledDate DateTime?
+  createdAt DateTime @default(now())
+}
+
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  title     String?
+  uploadedAt DateTime @default(now())
+}
+

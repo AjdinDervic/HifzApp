@@ -1,39 +1,33 @@
-let articles = [
-  {
-    id: 1,
-    title: "Prvi članak",
-    content: "Ovo je sadržaj prvog članka",
-    author: "Furkan tim",
-  },
-  {
-    id: 2,
-    title: "Drugi članak",
-    content: "Ovo je sadržaj drugog članka",
-    author: "Ajdin",
-  },
-];
-
+const prisma = require("../db/prisma");
 
 // Dohvacanje svih artikala u isto vrijeme, vjv ce biti potrebno za pocetnu stranicu
-const getAllArticles = (req, res) => {
+const getAllArticles = async (req, res) => {
+  try{
+    const articles = await prisma.article.findMany();
     res.json(articles);
-}
-
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška pri pronalasku članaka"});
+  }
+};
 
 //Dohvacanje artikala pomocu ID, kada nam trebadne jedan specifican clanak
-const getArticleById = (req, res) =>{
-    const id = parseInt(req.params.id);
-    const article = articles.find(a => a.id === id);
-
-    if(!article){
-        return res.status(404).json(({message: "Članak nije pronađen."}));
+const getArticleById = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try{
+    const article = await prisma.article.findUnique({where: {id}});
+    if (!article) {
+      return res.status(404).json({ message: "Članak nije pronađen." });
     }
     res.json(article);
-}
-
+  }catch(error){
+    console.error(error);
+    res.status(500).json({error: "Greška pri pronalasku članka."});
+  }
+};
 
 //Za adminovo kreiranje clanka, definisemo polja unutar clanka
-const createArticle = (req, res) => {
+const createArticle = async (req, res) => {
   const { title, content, author, imageURL } = req.body;
   //Validacija unosa
   if (!title || !content || !author) {
@@ -42,76 +36,50 @@ const createArticle = (req, res) => {
       .json({ message: "Sva polja su obavezna osim slike" });
   }
 
-  //Kreiranje novog clanka
-  const newArticle = {
-    id: Date.now(),
-    title,
-    content,
-    author,
-    imageURL: imageURL || "https://via.placeholder.com/600x300",
-  };
-
-  articles.push(newArticle);
-
-  //vracanje poruke ako je sve uspjesno
-  res.status(201).json({
-    message: "Novi artikal je usojesno kreiran",
-    article: newArticle,
-  });
+  try{
+    const newArticle = await prisma.article.create({
+      data: {title, content, author, imageURL}
+    });
+    res.status(201).json({message: "Članak uspješno kreiran.", newArticle});
+  }catch(error){
+  console.log(error);
+  res.status(500).json({error: "Greška prilikom kreiranja članka."});
+  }
 };
 
 
 //Kod za djelemicno azuriranje clanka
-const updateArticle = (req, res) => {
+const updateArticle = async (req, res) => {
   const id = parseInt(req.params.id);
-  const article = articles.find((a) => a.id === id);
-
-  if (!article) {
-    return res.status(404).json({ message: "Članak nije pronađen." });
-  }
-
   const { title, content, author, imageURL } = req.body;
 
-  
-  if (title) article.title = title;
-  if (content) article.content = content;
-  if (author) article.author = author;
-  if (imageURL) article.imageURL = imageURL;
-
-  res.json({
-    message: "Članak uspješno ažuriran.",
-    article,
-  });
+  try{
+    const updated = await prisma.article.update({
+      where: {id},
+      data: {title, content, author, imageURL},
+    });
+    res.json({message: "Članak je uspješno ažuriran."});
+  }catch(error){
+    res.status(500).json({error: "Greška prilikom ažuriranja članka"});
+  } 
 };
 
 
 //Brisanje clanka
-const deleteArticle = (req, res) => {
+const deleteArticle = async (req, res) => {
   const id = parseInt(req.params.id);
-  const index = articles.findIndex((a) => a.id === id);
-
-  if (index === -1) {
-    return res.status(404).json({ message: "Članak nije pronađen." });
-  }
-
-  const deleted = articles.splice(index, 1); // briše 1 element na toj poziciji
-
-  res.json({
-    message: "Članak uspješno obrisan.",
-    deleted: deleted[0],
-  });
+ try{
+await prisma.article.delete({ where: { id } });
+res.json({ message: "Članak uspješno izbrisan." });
+ }catch(error){
+  res.status(500).json({ error: "Greška prilikom brisanja članka." });
+ }
 };
-
-
-
-
 
 module.exports = {
   getAllArticles,
-  articles,
   getArticleById,
   createArticle,
   updateArticle,
-  deleteArticle
+  deleteArticle,
 };
-
