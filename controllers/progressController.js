@@ -1,10 +1,7 @@
-
-
-// Ovo dodaj na vrh fajla
-let progressList = [];
+const prisma = require('../db/prisma');
 
 // START PROGRESS
-const startProgress = (req, res) => {
+const startProgress = async (req, res) => {
   const { userId, method, learnedPages } = req.body;
 
   // ✅ Validacija obaveznih polja
@@ -19,123 +16,163 @@ const startProgress = (req, res) => {
   }
 
   // ✅ Dinamičko određivanje learningMode na osnovu metode
-  let learningMode = "motivacija"; // default
+  let learningMode = "GamifiedExplorer"; // default
   if (method === "redom") {
-    learningMode = "maraton";
+    learningMode = "MarathonMode";
   } else if (method === "krugovi") {
-    learningMode = "krugovi-motivacija";
+    learningMode = "SprintMode";
   } else if (method === "prilagodeni") {
-    learningMode = "personalizacija";
+    learningMode = "AdaptiveQuest";
   }
 
-  // ✅ Inicijalizacija početnih vrijednosti
   const pagesLearned = learnedPages || [];
   const totalLearned = pagesLearned.length;
 
   // ✅ Početni bedževi
   let badges = ["Start Progress"];
-  if (totalLearned >= 50) {
-    badges.push("Veteran Start"); // Ako korisnik već zna puno stranica
+
+  if (totalLearned >= 200) {
+    badges.push("Veteranski start");
+  } else if (totalLearned >= 150) {
+    badges.push("Hifz-pionir");
+  } else if (totalLearned >= 100) {
+    badges.push("Ustrajnost");
+  } else if (totalLearned >= 50) {
+    badges.push("Dobri temelji");
   }
 
-  // ✅ Kreiranje progress objekta
-  const newProgress = {
-    userId,
-    method,
-    learnedPages: pagesLearned,
-    totalLearned: totalLearned,
-    newLearnedCount: 0, // Nove stranice naučene kroz tvoju platformu
-    level: 1,           // Start level
-    badges: badges,
-    learningMode: learningMode,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+try {
+  const createdProgress = await prisma.progress.create({
+    data: {
+      userId,
+      method,
+      learnedPages: pagesLearned,
+      totalLearned,
+      newLearnedCount: 0,
+      level: 1,
+      badges,
+      learningMode,
+    },
+  });
 
-  // ✅ Dodavanje u memorijsku listu
-  progressList.push(newProgress);
-
-  // ✅ Odgovor servera
   res.status(201).json({
     message: "Progress uspješno započet!",
-    progress: newProgress
+    progress: createdProgress,
   });
+} catch (error) {
+  console.error("Greška prilikom kreiranja progress-a:", error);
+  res.status(500).json({ message: "Greška na serveru." });
+}
 };
+
+  
 
 
 // POCETAK UPDATE METODE
-
 const {
   isJuzCompleted,
   isCircleCompleted,
   juzMap,
   circleMap,
 } = require("../helpers/progressHelper");
-const updateProgress = (req, res) => {
-  const { userId, page } = req.body;
 
-  if (!userId || !page) {
-    return res.status(400).json({ message: "userId i page su obavezni." });
-  }
+const updateProgress = async (req, res) => {
+  const { userId } = req.body;
 
-  const progress = progressList.find((p) => p.userId === userId);
+  //const userId = req.user.id; 
+  const { pages } = req.body; 
 
-  if (!progress) {
-    return res.status(404).json({ message: "Progress nije pronađen." });
-  }
-
-  if (progress.learnedPages.includes(page)) {
+  if (!pages || !Array.isArray(pages) || pages.length === 0) {
     return res
       .status(400)
-      .json({ message: "Ova stranica je već označena kao naučena." });
+      .json({
+        message: "Polje 'pages' mora biti niz sa barem jednom stranicom.",
+      });
   }
 
-  // Dodajemo novu stranicu
-  progress.learnedPages.push(page);
-  progress.totalLearned += 1;
-  progress.newLearnedCount += 1;
-  progress.updatedAt = new Date();
+  try {
+    //  Pronađi progress za korisnika
+    const progress = await prisma.progress.findUnique({
+      where: { userId },
+    });
 
-  // Novi leveling sistem
-  const importantMilestones = [1, 3, 5, 8, 10, 15, 20, 25, 30];
+    if (!progress) {
+      return res.status(404).json({ message: "Progress nije pronađen." });
+    }
 
-  if (
-    importantMilestones.includes(progress.newLearnedCount) ||
-    (progress.newLearnedCount > 30 && progress.newLearnedCount % 10 === 0)
-  ) {
-    progress.level += 1;
-    progress.badges.push(
-      `Level ${progress.level} - ${progress.newLearnedCount} stranica`
+    //  Filtriraj stranice koje su već označene
+    const newPages = pages.filter(
+      (page) => !progress.learnedPages.includes(page)
     );
-  }
+    if (newPages.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Sve stranice su već ranije dodane." });
+    }
 
-  // Dodatna provjera za džuz/krug
-  if (progress.method === "redom") {
-    for (const juzNumber in juzMap) {
-      if (isJuzCompleted(juzNumber, progress.learnedPages)) {
-        if (!progress.badges.includes(`Kompletiran džuz ${juzNumber}`)) {
-          progress.badges.push(`Kompletiran džuz ${juzNumber}`);
+    //  Novi podaci
+    const updatedLearnedPages = [...progress.learnedPages, ...newPages];
+    const totalLearned = updatedLearnedPages.length;
+    const newLearnedCount = progress.newLearnedCount + newPages.length;
+    let level = progress.level;
+    let badges = [...progress.badges];
+
+    // 🎖 Leveling sistem
+    const importantMilestones = [1, 3, 5, 8, 10, 15, 20, 25, 30];
+    if (
+      importantMilestones.includes(newLearnedCount) ||
+      (newLearnedCount > 30 && newLearnedCount % 10 === 0)
+    ) {
+      level += 1;
+      badges.push(`Level ${level} - ${newLearnedCount} stranica`);
+    }
+
+    // 🎖 Provjera džuzova
+    if (progress.method === "redom") {
+      for (const juzNumber in juzMap) {
+        if (isJuzCompleted(juzNumber, updatedLearnedPages)) {
+          const badge = `Kompletiran džuz ${juzNumber}`;
+          if (!badges.includes(badge)) {
+            badges.push(badge);
+          }
         }
       }
     }
-  }
 
-  if (progress.method === "krugovi") {
-    for (const circleNumber in circleMap) {
-      if (isCircleCompleted(circleNumber, progress.learnedPages)) {
-        if (!progress.badges.includes(`Kompletiran krug ${circleNumber}`)) {
-          progress.badges.push(`Kompletiran krug ${circleNumber}`);
+    //  Provjera krugova
+    if (progress.method === "krugovi") {
+      for (const circleNumber in circleMap) {
+        if (isCircleCompleted(circleNumber, updatedLearnedPages)) {
+          const badge = `Kompletiran krug ${circleNumber}`;
+          if (!badges.includes(badge)) {
+            badges.push(badge);
+          }
         }
       }
     }
-  }
 
-  res.status(200).json({
-    message: "Progress uspješno ažuriran!",
-    progress,
-  });
+    // Spasi u bazu
+    const updated = await prisma.progress.update({
+      where: { userId },
+      data: {
+        learnedPages: updatedLearnedPages,
+        totalLearned,
+        newLearnedCount,
+        level,
+        badges,
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      message: "Progress uspješno ažuriran!",
+      progress: updated,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Greška na serveru." });
+  }
 };
-
 
 
 
@@ -163,20 +200,27 @@ const resetProgress = (req, res) => {
 
 // GET metoda
 
-const getUserProgress = (req, res) => {
-  const { userId } = req.query; // Pazimo: ovdje čitamo iz query stringa, ne iz body-ja!
+const getUserProgress =async (req, res) => {
+const userId = parseInt(req.query.userId);
+
+
 
   if (!userId) {
     return res.status(400).json({ message: "userId je obavezan." });
   }
+  try{
+    const progress = await prisma.progress.findUnique({where: {userId}});
+    if (!progress) {
+      return res.status(404).json({ message: "Progress nije pronađen." });
+    }
 
-  const progress = progressList.find((p) => p.userId == userId);
+    res.status(200).json({ progress });
 
-  if (!progress) {
-    return res.status(404).json({ message: "Progress nije pronađen." });
+  }catch(error){
+    console.error(error);
+    res.status(500).json({message: "Greška na serveru."});
+
   }
-
-  res.status(200).json({ progress });
 };
 
 
