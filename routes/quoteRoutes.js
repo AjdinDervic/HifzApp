@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const verifyToken = require("../middleware/verifyToken");
+const isAdmin = require("../middleware/isAdmin");
+
 
 const {
   getDailyQuote,
@@ -11,11 +14,11 @@ const {
 } = require("../controllers/quoteController");
 
 router.get("/", getDailyQuote);
-router.post("/", createQuote);
-router.patch("/:id/schedule", scheduleQuote);
-router.get("/all", getAllQuotes);
-router.delete("/:id", deleteQuote);
-router.patch("/:id/unschedule", unscheduleQuote);
+router.post("/", verifyToken, isAdmin, createQuote);
+router.patch("/:id/schedule", verifyToken, isAdmin, scheduleQuote);
+router.get("/all", isAdmin, getAllQuotes);
+router.delete("/:id", verifyToken, isAdmin, deleteQuote);
+router.patch("/:id/unschedule", verifyToken, isAdmin, unscheduleQuote);
 
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const prisma = require('../db/prisma');
 
+
 // START PROGRESS
 const startProgress = async (req, res) => {
   const { userId, method, learnedPages } = req.body;
@@ -178,23 +179,33 @@ const updateProgress = async (req, res) => {
 
 
 // POCETAK RESET METODE:
-const resetProgress = (req, res) => {
+const resetProgress = async (req, res) => {
   const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ message: "userId je obavezan." });
   }
 
-  const progressIndex = progressList.findIndex((p) => p.userId === userId);
+  try {
+    
+    const existingProgress = await prisma.progress.findUnique({
+      where: { userId: parseInt(userId) }, 
+    });
 
-  if (progressIndex === -1) {
-    return res.status(404).json({ message: "Progress nije pronađen." });
+    if (!existingProgress) {
+      return res.status(404).json({ message: "Progress nije pronađen." });
+    }
+
+    // Brisanje iz baze
+    await prisma.progress.delete({
+      where: { userId: parseInt(userId) },
+    });
+
+    res.status(200).json({ message: "Progress uspješno resetovan." });
+  } catch (error) {
+    console.error("Greška prilikom resetovanja:", error);
+    res.status(500).json({ message: "Greška na serveru." });
   }
-
-  // Brišemo postojeći progress
-  progressList.splice(progressIndex, 1);
-
-  res.status(200).json({ message: "Progress uspješno resetovan." });
 };
 
 

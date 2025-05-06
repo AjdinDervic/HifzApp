@@ -14,6 +14,11 @@ res.status(500).json({error: "Desilo se nesto neocekivano"});
 // Prikaz jednog korisnika po ID-u
 const getUserById = async (req, res) => {
   const id = parseInt(req.params.id);
+
+  if (req.user.id !== parseInt(req.params.id) && req.user.role !== "ADMIN") {
+    return res.status(403).json({ message: "Nemaš pristup ovom korisniku." });
+  }
+
   try{
   const user = await prisma.user.findUnique({where: {id}});
 
@@ -27,28 +32,16 @@ res.status(500).json({error: "Greska prilikom pronalska korisnika"});
 }
 };
 
-// Registracija korisnika
-const createUser = async (req, res) => {
-  const { name, surname, email, city, password, userType } = req.body;
-
-  if (!name || !surname || !email || !city || !password || !userType) {
-    return res.status(400).json({ message: "Sva polja su obavezna." });
-  }
-
-  try{
-    const user = await prisma.user.create({
-        data: {name, surname, email, password, city, role: "USER", userType }
-    });
-    res.status(201).json({message: "Registracija uspješna.", user});
-  }catch(error){
-    res.status(500).json({error: "Greška prilikom kreiranja korisnika."});
-  }
-
-};
 
 // Ažuriranje korisnika
 const updateUser = async (req, res) => {
   const id = parseInt(req.params.id);
+  if (req.user.id !== parseInt(req.params.id)) {
+    return res
+      .status(403)
+      .json({ message: "Možeš uređivati samo svoj profil." });
+  }
+
 const { name, surname, email, password, city, userType } = req.body;
   try{
     const updated = await prisma.user.update({
@@ -78,7 +71,6 @@ const deleteUser = async (req, res) => {
 module.exports = {
   getAllUsers,
   getUserById,
-  createUser,
   updateUser,
   deleteUser,
 };
