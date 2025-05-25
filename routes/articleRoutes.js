@@ -6,12 +6,13 @@ const {
   getAllArticles,
   getArticleById,
   updateArticle,
-  deleteArticle
+  deleteArticle,
+  createArticle
 } = require("../controllers/articleController");
 
 
 router.get("/", getAllArticles);
-router.post("/", verifyToken, isAdmin);
+router.post("/", verifyToken, isAdmin, createArticle);
 router.get("/:id", getArticleById);
 router.patch("/:id", verifyToken, isAdmin, updateArticle);
 router.delete("/:id", verifyToken, isAdmin, deleteArticle);
