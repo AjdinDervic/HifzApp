@@ -1,10 +1,10 @@
 # HifzApp
-## Clone repository
-git clone https://github.com/AjdinDervic/HifzApp 
+## 1. Clone repository
+git clone https://github.com/AjdinDervic/HifzApp  
 cd HifzApp
-## Install dependencies
+## 2. Install dependencies
 npm install
-## Run database migrations
+## 3. Run database migrations
 npx prisma migrate dev
-## Start server
+## 4. Start server
 npm run start
