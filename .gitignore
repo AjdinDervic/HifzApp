@@ -1,19 +1,18 @@
-# Node modules
+
 node_modules/
 
-# Environment variables
+
 .env
 
-# Logs
+
 npm-debug.log*
 
-# Prisma artifacts (ako koristiš kasnije)
 .prisma/
 prisma/dev.db
 
-# VSCode settings (opcionalno)
+
 .vscode/
 
-# Build folders (ako dodaš frontend)
+
 dist/
 build/
