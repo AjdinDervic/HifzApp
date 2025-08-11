@@ -1,6 +1,6 @@
 # HifzApp
 ## Clone repository
-git clone https://github.com/AjdinDervic/HifzApp /n
+git clone https://github.com/AjdinDervic/HifzApp 
 cd HifzApp
 ## Install dependencies
 npm install
