@@ -1,7 +1,7 @@
 # HifzApp
 ## Clone repository
-git clone https://github.com/your-username/EHifzAppBackend.git
-cd EHifzAppBackend
+git clone https://github.com/AjdinDervic/HifzApp /n
+cd HifzApp
 ## Install dependencies
 npm install
 ## Run database migrations
