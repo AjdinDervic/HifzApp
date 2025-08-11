@@ -1,4 +1,9 @@
 # HifzApp
+## ⚙ Requirements
+Node.js v18 or higher
+
+PostgreSQL v14 or higher (running locally)
+
 ## 1. Clone repository
 ```bash
 git clone https://github.com/AjdinDervic/HifzApp
